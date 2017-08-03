@@ -65,19 +65,10 @@ var Player = function(id, name){
 	this.flush = "";
 };
 
+var allplayers = [];
+var players = [];
 
-var p1 = new Player(1, "Rui");
-var p2 = new Player(2, "Alex");
-var p3 = new Player(3, "Andy");
-var p4 = new Player(4, "Sachin");
-var p5 = new Player(5, "Winston");
-var p6 = new Player(6, "Stephen");
-var p7 = new Player(7, "Frances");
-var p8 = new Player(8, "Jeremy");
-p1.button = true;
 
-var allplayers = [p1,p2,p3,p4,p5,p6,p7,p8];
-var players = [p1,p2,p3,p4,p5,p6,p7,p8];
 
 var Card = function(rank, value, suit, image){
 	this.rank = rank;
@@ -140,7 +131,7 @@ var c51 = new Card(14, "A", "H", "AH");
 var c52 = new Card(14, "A", "S", "AS");
 
 var deck = [c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15,c16,c17,c18,c19,c20,c21,c22,c23,c24,c25,c26,c27,c28,c29,c30,c31,c32,c33,c34,c35,c36,c37,c38,c39,c40,c41,c42,c43,c44,c45,c46,c47,c48,c49,c50,c51,c52];
-//var deck = [c1,c2,c3,c4,c35,c51,c27,c43,c8,c3,c4,c7,c8,c12,c1,c17,c52,c48,c44,c40,c32,c23,c24,c25,c26,c27,c28,c29,c30,c31,c32,c33,c34,c35,c36,c37,c38,c39,c40,c41,c42,c43,c44,c45,c46,c47,c48,c49,c50,c51,c52];
+
 var deck = shuffle(deck);
 
 var players = [];
@@ -529,17 +520,22 @@ var pot = sb+bb;
 var action;
 var besthands = [];
 var tie = false;
-startHand();
+// startHand();
 
 
 io.on('connection', function(socket) {
 	socket.on('disconnect', function() {
 		console.log('Aww..');
 	});
-
+	socket.on('add user', function(user) {
+		var p1 = new Player(1, "Rui");
+		allplayers.push(p1);
+		players.push(p1);
+		p1.button = true;
+		console.log('new user added' + user);
+	}) 
 	socket.on('init', function(message) {
 		io.emit('init', players, allplayers, pot, board);
-		//var p8 = new Player(8, "Jeremy", soc);
 	});
 
 	socket.on('fold', function(message) {
