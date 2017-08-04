@@ -148,7 +148,7 @@ var action;
 var besthands = [];
 var tie = false;
 var confirmList = [];
-var onGoing = false;
+var gameStarted = false;
 
 
 io.on('connection', function(socket) {
@@ -160,8 +160,6 @@ io.on('connection', function(socket) {
 	socket.on('ready', function(player) {
     confirmList.filter((e) => e.id === player.id)[0].confirm = true;
     io.sockets.emit('confirm', player);
-    console.log(allplayers);
-    console.log('============')
     if (confirmList.filter((e) => !e.confirm).length === 0 && players.length > 1) {
       startHand();
     }
@@ -397,6 +395,7 @@ function fold(){
 };
 
 function startHand(){
+  gameStarted = true;
   playerReset();
   board =[];
   round = "p";
