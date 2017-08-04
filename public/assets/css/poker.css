@@ -42,6 +42,13 @@ body{
 	position: fixed;
 	right: 20px;
 	top: 20px;
+	display: none;
+}
+
+#login{
+	position: fixed;
+	right: 20px;
+	top: 20px;
 }
 
 #action button{
@@ -152,4 +159,21 @@ body{
 #player7 .chipsout{left:345px; top:59px;}
 #player8 .chipsout{left:220px; top:156px;}
 
+.confirm-board {
+    position: fixed;
+    left: 20px;
+    top: 20px;
+	
+}
 
+.confirm-board table tr{
+    color: white;
+}
+
+.me {
+	color: red !important;
+}
+
+.confirm-board table td{
+    padding: 6px;
+}

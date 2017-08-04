@@ -65,8 +65,7 @@ var Player = function(id, name){
 	this.flush = "";
 };
 
-var allplayers = [];
-var players = [];
+
 
 
 
@@ -134,383 +133,11 @@ var deck = [c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15,c16,c17,c18,c19,c
 
 var deck = shuffle(deck);
 
-var players = [];
 // END PLAYER AND CARD INITIALIZATION
 
-// FUNCTIONS //
-
-function playerReset(){
-	for (i=0; i<allplayers.length; i++){
-		for (hand in allplayers[i].hands){
-			if (hand == 'HC') allplayers[i].hands[hand] = true;
-			else allplayers[i].hands[hand] = false;
-		}
-		for (suit in allplayers[i].suits){
-			allplayers[i].suits[suit] = 0;
-		}
-		for (rank in allplayers[i].ranks){
-			allplayers[i].ranks[rank] = 0;
-		}
-		allplayers[i].hand = [];
-		allplayers[i].pacounter = 0;
-		allplayers[i].tkcounter = 0;
-		allplayers[i].straight = [];
-		allplayers[i].flush = "";
-	}
-}
-
-function passButton(){
-	for(i=0; i<allplayers.length; i++){
-		var j = 0;
-		if (allplayers[i].button == true){
-		  allplayers[i].button = false;
-		  var buttonIndex = i;
-		  break;
-		}
-	}
-	for(i=buttonIndex; j<allplayers.length; j++){
-		if(i != allplayers.length-1) i++;
-		else i = 0;
-		if (allplayers[i].ingame == true){
-		  allplayers[i].button = true;
-		  break;
-		}
-		if(i == allplayers.length-1) i=-1;
-  }
-  playersInHand(i);
-};
-
-function playersInHand(buttonIndex){
-  players = [];
-  var j = buttonIndex;
-  for(i=0; i<allplayers.length; i++){
-  	allplayers[i].bigblind = false;
-  	allplayers[i].firsttoact = false;
-  	if(allplayers[j].ingame == true){
-      players.push(allplayers[j]);
-    }
-    if(j != allplayers.length-1) j++;
-    else j = 0;
-  }
-};
-
-function firstAfterButton(){
-	players = [];
-  for(i=0; i<allplayers.length; i++){
-  	allplayers[i].firsttoact = false;
-  	if(allplayers[i].button == true){
-      var buttonindex = i;
-      break;
-    }
-  }
-  
-  if (buttonindex == allplayers.length-1) buttonindex = 0;
-  else buttonindex ++;
-
-  for(i=0; i<allplayers.length; i++){
-  	if(allplayers[buttonindex].inhand == true){
-      players.push(allplayers[buttonindex]);
-    }
-    if (buttonindex != allplayers.length-1) buttonindex ++;
-    else buttonindex = 0;
-  }
-  players[0].firsttoact = true;
-};
-
-function shuffle(o){ //v1.0
-  for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
-  return o;
-};
-
-function shuffleDeck(){
-	random = Math.floor(Math.random()*(10-1+1)+1);
-	for(var i = 0; i < random; i++){
-	  deck = shuffle(deck);
-  }
-};
-
-function dealCards(){
-	for(i=0; i<2; i++){
-		for(j=0; j<players.length; j++){
-			if(i==0) players[j].card1 = deck[0];
-			if(i==1) players[j].card2 = deck[0];
-	    deck.push(deck.shift());
-	  }
-	}
-};
-
-function blinds(){
-  players.push(players.shift()); 
-	players[0].chips -= sb;
-	players[0].chipsout += sb;
-	players.push(players.shift()); 
-	players[0].bigblind = true;
-	players[0].chips -= bb;
-	players[0].chipsout += bb;
-	players.push(players.shift()); 
-};
-
-function fold(){
-	//players[0].inhand = false;
-	//players.delete(0); 
-	//io.emit('next', players);
-};
-
-function startHand(){
-	playerReset();
-	board =[];
-	round = "p";
-	raisecount = 0;
-	sb = 10;
-	bb = 20;
-	cb = bb;
-	pot = sb+bb;
-	besthands = [];
-	tie = false;
-	passButton();
-	blinds();
-  shuffleDeck();
-  dealCards();
-  io.emit('init', players, allplayers, pot, board);
-}
-
-function scoopOnFold(){
-  if (tie != true) players[0].chips += pot;
-  for (var i=0; i<allplayers.length; i++){
-    allplayers[i].chipsout = 0;
-		allplayers[i].inhand = true;
-  }
-  if (tie == true){
-  	io.emit('tiescoop', players, pot);
-  } 
-  else io.emit('scoop', players, pot);
-  pot = 0;
-}
-
-function nextCards(){
-	if (round == 'r'){
-		players = [];
-		for(i=0; i<allplayers.length; i++){
-			if (allplayers[i].inhand == true) players.push(allplayers[i]);
-		}
-		checkHands();
-	}
-	else{
-		if (round == 't') postRiver();
-		if (round == 'f') postTurn();
-		if (round == 'p') postFlop();
-	  for (var i=0; i<allplayers.length; i++){
-			allplayers[i].chipsout = 0;
-	  }
-	  raisecount = 0;
-	  firstAfterButton();
-	  io.emit('flop', board, players, allplayers, pot);
-	}
-}
-function postFlop(){
-	board[0]=deck[0];
-	deck.push(deck.shift());
-	board[1]=deck[0];
-	deck.push(deck.shift());
-	board[2]=deck[0];
-	deck.push(deck.shift());
-	round = "f";
-}
-
-function postTurn(){
-	board[3]=deck[0];
-	deck.push(deck.shift());
-	round = "t";
-}
-
-function postRiver(){
-	board[4]=deck[0];
-	deck.push(deck.shift());
-	round = "r";
-}
-
-function checkHands(){
-	for (i=0; i<players.length; i++){
-		players[i].hand = [players[i].card1, players[i].card2, board[0], board[1], board[2], board[3], board[4]];
-		for (j=0; j<players[i].hand.length; j++){
-	  	if (players[i].hand[j].suit == "C") players[i].suits['C'] ++;
-	  	if (players[i].hand[j].suit == "D") players[i].suits['D'] ++;
-	  	if (players[i].hand[j].suit == "H") players[i].suits['H'] ++;
-	  	if (players[i].hand[j].suit == "S") players[i].suits['S'] ++;
-	  	if (players[i].hand[j].rank == 2) players[i].ranks['TW'] ++;
-	  	if (players[i].hand[j].rank == 3) players[i].ranks['TH'] ++;
-	  	if (players[i].hand[j].rank == 4) players[i].ranks['FO'] ++;
-	  	if (players[i].hand[j].rank == 5) players[i].ranks['FI'] ++;
-	  	if (players[i].hand[j].rank == 6) players[i].ranks['SI'] ++;
-	  	if (players[i].hand[j].rank == 7) players[i].ranks['SE'] ++;
-	  	if (players[i].hand[j].rank == 8) players[i].ranks['EI'] ++;
-	  	if (players[i].hand[j].rank == 9) players[i].ranks['NI'] ++;
-	  	if (players[i].hand[j].rank == 10) players[i].ranks['TE'] ++;
-	  	if (players[i].hand[j].rank == 11) players[i].ranks['JA'] ++;
-	  	if (players[i].hand[j].rank == 12) players[i].ranks['QU'] ++;
-	  	if (players[i].hand[j].rank == 13) players[i].ranks['KI'] ++;
-	  	if (players[i].hand[j].rank == 14) players[i].ranks['AC'] ++;
-	  }
-  }
-  pairCheck();
-	flushCheck();
-	straightCheck();
-	sfCheck();
-	bestIndex();
-}
-
-function breakTie(bestindex){
-	if (besthands.length == 1) players = besthands;
-	else{
-		switch (bestindex){
-			case 0:
-				breakTieSF();
-				break;
-			case 1:
-				breakTieFK();
-				break;
-			case 2:
-				breakTieFH();
-				break;
-			case 3:
-				breakTieFL();
-				break;
-			case 4:
-				breakTieST();
-				break;
-			case 5:
-				breakTieTK();
-				break;
-			case 6:
-				breakTieTP();
-				break;
-			case 7:
-				breakTiePA();
-				break;
-			case 8:
-				breakTieHC();
-				break;
-		}
-	}
-	scoopOnFold();
-	startHand();
-}
-
-function bestIndex(){
-	var bestindex = 8;
-	for (i=0; i<players.length; i++){
-		var curindex = 0;
-		for (var hand in players[i].hands){
-			if (players[i].hands[hand] == true){
-				if (curindex <= bestindex){
-					if (curindex < bestindex){
-						besthands = [];
-					}
-					besthands.push(players[i]);
-					bestindex = curindex;
-				}
-				break;
-			}
-			curindex ++;
-		}
-	}
-	breakTie(bestindex);
-}
-
-function pairCheck(){
-	for (i=0; i<players.length; i++){
-		for (var rank in players[i].ranks){
-			if (players[i].ranks[rank] == 4) players[i].hands['FK'] = true;
-			if (players[i].ranks[rank] == 3){
-				players[i].hands['TK'] = true;
-				players[i].tkcounter ++;
-			}
-			if(players[i].ranks[rank] == 2){
-				players[i].hands['PA'] = true;
-				players[i].pacounter ++;
-			}
-		}
-		if (players[i].pacounter >= 2) players[i].hands['TP'] = true;
-		if ( (players[i].tkcounter >= 1 && players[i].pacounter >= 1) || players[i].tkcounter == 2) players[i].hands['FH'] = true;
-	}
-}
-
-function flushCheck(){
-	for (i=0; i<players.length; i++){
-		for (var suit in players[i].suits){
-			if (players[i].suits[suit] >= 5){
-				players[i].hands['FL'] = true;
-				players[i].flush = suit;
-			}
-		}
-	}
-}
-
-function straightCheck(){
- 	for (i=0; i<players.length; i++){
- 		if (players[i].ranks['AC'] >= 1 && players[i].ranks['KI'] >= 1 && players[i].ranks['QU'] >= 1 && players[i].ranks['JA'] >= 1 && players[i].ranks['TE'] >= 1){
-      players[i].hands['ST'] = true;
-      players[i].straight.push(14);
-    }
-    if (players[i].ranks['KI'] >= 1 && players[i].ranks['QU'] >= 1 && players[i].ranks['JA'] >= 1 && players[i].ranks['TE'] >= 1 && players[i].ranks['NI'] >= 1){
-      players[i].hands['ST'] = true;
-      players[i].straight.push(13);
-    }
-    if (players[i].ranks['QU'] >= 1 && players[i].ranks['JA'] >= 1 && players[i].ranks['TE'] >= 1 && players[i].ranks['NI'] >= 1 && players[i].ranks['EI'] >= 1){
-      players[i].hands['ST'] = true;
-      players[i].straight.push(12);
-    }
-    if (players[i].ranks['JA'] >= 1 && players[i].ranks['TE'] >= 1 && players[i].ranks['NI'] >= 1 && players[i].ranks['EI'] >= 1 && players[i].ranks['SE'] >= 1){
-      players[i].hands['ST'] = true;
-      players[i].straight.push(11);
-    }
-    if (players[i].ranks['TE'] >= 1 && players[i].ranks['NI'] >= 1 && players[i].ranks['EI'] >= 1 && players[i].ranks['SE'] >= 1 && players[i].ranks['SI'] >= 1){
-      players[i].hands['ST'] = true;
-      players[i].straight.push(10);
-    }
-    if (players[i].ranks['NI'] >= 1 && players[i].ranks['EI'] >= 1 && players[i].ranks['SE'] >= 1 && players[i].ranks['SI'] >= 1 && players[i].ranks['FI'] >= 1){
-      players[i].hands['ST'] = true;
-      players[i].straight.push(9);
-    }
-    if (players[i].ranks['EI'] >= 1 && players[i].ranks['SE'] >= 1 && players[i].ranks['SI'] >= 1 && players[i].ranks['FI'] >= 1 && players[i].ranks['FO'] >= 1){
-      players[i].hands['ST'] = true;
-      players[i].straight.push(8);
-    }
-    if (players[i].ranks['SE'] >= 1 && players[i].ranks['SI'] >= 1 && players[i].ranks['FI'] >= 1 && players[i].ranks['FO'] >= 1 && players[i].ranks['TH'] >= 1){
-      players[i].hands['ST'] = true;
-      players[i].straight.push(7);
-    }
-    if (players[i].ranks['SI'] >= 1 && players[i].ranks['FI'] >= 1 && players[i].ranks['FO'] >= 1 && players[i].ranks['TH'] >= 1 && players[i].ranks['TW'] >= 1){
-      players[i].hands['ST'] = true;
-      players[i].straight.push(6);
-    }
-    if (players[i].ranks['FI'] >= 1 && players[i].ranks['FO'] >= 1 && players[i].ranks['TH'] >= 1 && players[i].ranks['TW'] >= 1 && players[i].ranks['AC'] >= 1){
-      players[i].hands['ST'] = true;
-      players[i].straight.push(5);
-    }
-  }
-}
-
-function sfCheck(){
- 	for (i=0; i<players.length; i++){
- 	  if (players[i].hands['FL'] == true && players[i].hands['ST'] == true){
-      for(j=0; j<players[i].straight.length; j++){
-     	  var num = players[i].straight[j];
-        var suitcount = 0
-          for(k=0; k<5; k++){
-        	  if (num == 1) num = 14;
-            for (l=0; l<players[i].hand.length; l++){
-              if (players[i].hand[l].suit == players[i].flush && players[i].hand[l].rank == num) suitcount += 1;
-            }
-            num = num-1; 
-          }
-        if (suitcount >= 5) players[i].hands['SF'] = true;
-      }
-    } 
-  }
-}
-
 var board = [];
+var players = [];
+var allplayers = [];
 var round = "p";
 var raisecount = 0;
 var sb = 10;
@@ -520,25 +147,28 @@ var pot = sb+bb;
 var action;
 var besthands = [];
 var tie = false;
-// startHand();
+var confirmList = [];
+var onGoing = false;
 
 
 io.on('connection', function(socket) {
-	socket.on('disconnect', function() {
-		console.log('Aww..');
-	});
-	socket.on('add user', function(user) {
-		var p1 = new Player(1, "Rui");
-		allplayers.push(p1);
-		players.push(p1);
-		p1.button = true;
-		console.log('new user added' + user);
-	}) 
-	socket.on('init', function(message) {
-		io.emit('init', players, allplayers, pot, board);
-	});
+  var addedUser = false;
+  socket.on('init', function(message) {
+    io.emit('init', players, allplayers, pot, board);
+  });
+
+	socket.on('ready', function(player) {
+    confirmList.filter((e) => e.id === player.id)[0].confirm = true;
+    io.sockets.emit('confirm', player);
+    console.log(allplayers);
+    console.log('============')
+    if (confirmList.filter((e) => !e.confirm).length === 0 && players.length > 1) {
+      startHand();
+    }
+  })
 
 	socket.on('fold', function(message) {
+    console.log('fold');
 		io.emit('fold', players, cb, bb);
 		players[0].inhand = false;
 		if (cb == players[1].chipsout && (bb != players[1].chipsout || round != 'p')) nextCards();
@@ -617,9 +247,413 @@ io.on('connection', function(socket) {
 		postFlop();
 	});
 	
+  socket.on('add user', function(userName) {
+    if(addedUser) return;
+    addedUser = true;
+    var newPlayer = new Player (players.length + 1, userName);
+    allplayers.push(newPlayer);
+    console.log(allplayers);
+    players.push(newPlayer);
+    confirmList.push({
+      id: newPlayer.id,
+      name: newPlayer.name,
+      confirm: false
+    })
+    socket.emit('login', newPlayer);
+    io.sockets.emit('new user', confirmList);
+  })
 
-
+  socket.on('start game', function() {
+    startHand();
+  })
+  socket.on('disconnect', function() {
+    if(addedUser) {
+      console.log('Aww..');
+    }
+  });
 });
+
+
+
+// FUNCTIONS //
+
+function playerReset(){
+  for (i=0; i<allplayers.length; i++){
+    for (hand in allplayers[i].hands){
+      if (hand == 'HC') allplayers[i].hands[hand] = true;
+      else allplayers[i].hands[hand] = false;
+    }
+    for (suit in allplayers[i].suits){
+      allplayers[i].suits[suit] = 0;
+    }
+    for (rank in allplayers[i].ranks){
+      allplayers[i].ranks[rank] = 0;
+    }
+    allplayers[i].hand = [];
+    allplayers[i].pacounter = 0;
+    allplayers[i].tkcounter = 0;
+    allplayers[i].straight = [];
+    allplayers[i].flush = "";
+  }
+}
+
+function passButton(){
+  for(i=0; i<allplayers.length; i++){
+    var j = 0;
+    var buttonIndex = 0;
+    if (allplayers[i].button == true){
+      allplayers[i].button = false;
+      buttonIndex = i;
+      console.log(buttonIndex);
+      break;
+    }
+  }
+  for(i=buttonIndex; j<allplayers.length; j++){
+    if(i != allplayers.length-1) i++;
+    else i = 0;
+    if (allplayers[i].ingame == true){
+      allplayers[i].button = true;
+      break;
+    }
+    if(i == allplayers.length-1) i=-1;
+  }
+  playersInHand(i);
+};
+
+function playersInHand(buttonIndex){
+  players = [];
+  var j = buttonIndex;
+  for(i=0; i<allplayers.length; i++){
+    allplayers[i].bigblind = false;
+    allplayers[i].firsttoact = false;
+    if(allplayers[j].ingame == true){
+      players.push(allplayers[j]);
+    }
+    if(j != allplayers.length-1) j++;
+    else j = 0;
+  }
+};
+
+function firstAfterButton(){
+  players = [];
+  for(i=0; i<allplayers.length; i++){
+    allplayers[i].firsttoact = false;
+    if(allplayers[i].button == true){
+      var buttonindex = i;
+      break;
+    }
+  }
+  
+  if (buttonindex == allplayers.length-1) buttonindex = 0;
+  else buttonindex ++;
+
+  for(i=0; i<allplayers.length; i++){
+    if(allplayers[buttonindex].inhand == true){
+      players.push(allplayers[buttonindex]);
+    }
+    if (buttonindex != allplayers.length-1) buttonindex ++;
+    else buttonindex = 0;
+  }
+  players[0].firsttoact = true;
+};
+
+function shuffle(o){ //v1.0
+  for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+  return o;
+};
+
+function shuffleDeck(){
+  random = Math.floor(Math.random()*(10-1+1)+1);
+  for(var i = 0; i < random; i++){
+    deck = shuffle(deck);
+  }
+};
+
+function dealCards(){
+  for(i=0; i<2; i++){
+    for(j=0; j<players.length; j++){
+      if(i==0) players[j].card1 = deck[0];
+      if(i==1) players[j].card2 = deck[0];
+      deck.push(deck.shift());
+    }
+  }
+};
+
+function blinds(){
+  players.push(players.shift()); 
+  players[0].chips -= sb;
+  players[0].chipsout += sb;
+  players.push(players.shift()); 
+  players[0].bigblind = true;
+  players[0].chips -= bb;
+  players[0].chipsout += bb;
+  players.push(players.shift()); 
+};
+
+function fold(){
+  //players[0].inhand = false;
+  //players.delete(0); 
+  //io.emit('next', players);
+};
+
+function startHand(){
+  playerReset();
+  board =[];
+  round = "p";
+  raisecount = 0;
+  sb = 10;
+  bb = 20;
+  cb = bb;
+  pot = sb+bb;
+  besthands = [];
+  tie = false;
+  passButton();
+  blinds();
+  shuffleDeck();
+  dealCards();
+  io.emit('init', players, allplayers, pot, board);
+}
+
+function scoopOnFold(){
+  if (tie != true) players[0].chips += pot;
+  for (var i=0; i<allplayers.length; i++){
+    allplayers[i].chipsout = 0;
+    allplayers[i].inhand = true;
+  }
+  if (tie == true){
+    io.emit('tiescoop', players, pot);
+  } 
+  else io.emit('scoop', players, pot);
+  pot = 0;
+}
+
+function nextCards(){
+  if (round == 'r'){
+    players = [];
+    for(i=0; i<allplayers.length; i++){
+      if (allplayers[i].inhand == true) players.push(allplayers[i]);
+    }
+    checkHands();
+  }
+  else{
+    if (round == 't') postRiver();
+    if (round == 'f') postTurn();
+    if (round == 'p') postFlop();
+    for (var i=0; i<allplayers.length; i++){
+      allplayers[i].chipsout = 0;
+    }
+    raisecount = 0;
+    firstAfterButton();
+    io.emit('flop', board, players, allplayers, pot);
+  }
+}
+function postFlop(){
+  board[0]=deck[0];
+  deck.push(deck.shift());
+  board[1]=deck[0];
+  deck.push(deck.shift());
+  board[2]=deck[0];
+  deck.push(deck.shift());
+  round = "f";
+}
+
+function postTurn(){
+  board[3]=deck[0];
+  deck.push(deck.shift());
+  round = "t";
+}
+
+function postRiver(){
+  board[4]=deck[0];
+  deck.push(deck.shift());
+  round = "r";
+}
+
+function checkHands(){
+  for (i=0; i<players.length; i++){
+    players[i].hand = [players[i].card1, players[i].card2, board[0], board[1], board[2], board[3], board[4]];
+    for (j=0; j<players[i].hand.length; j++){
+      if (players[i].hand[j].suit == "C") players[i].suits['C'] ++;
+      if (players[i].hand[j].suit == "D") players[i].suits['D'] ++;
+      if (players[i].hand[j].suit == "H") players[i].suits['H'] ++;
+      if (players[i].hand[j].suit == "S") players[i].suits['S'] ++;
+      if (players[i].hand[j].rank == 2) players[i].ranks['TW'] ++;
+      if (players[i].hand[j].rank == 3) players[i].ranks['TH'] ++;
+      if (players[i].hand[j].rank == 4) players[i].ranks['FO'] ++;
+      if (players[i].hand[j].rank == 5) players[i].ranks['FI'] ++;
+      if (players[i].hand[j].rank == 6) players[i].ranks['SI'] ++;
+      if (players[i].hand[j].rank == 7) players[i].ranks['SE'] ++;
+      if (players[i].hand[j].rank == 8) players[i].ranks['EI'] ++;
+      if (players[i].hand[j].rank == 9) players[i].ranks['NI'] ++;
+      if (players[i].hand[j].rank == 10) players[i].ranks['TE'] ++;
+      if (players[i].hand[j].rank == 11) players[i].ranks['JA'] ++;
+      if (players[i].hand[j].rank == 12) players[i].ranks['QU'] ++;
+      if (players[i].hand[j].rank == 13) players[i].ranks['KI'] ++;
+      if (players[i].hand[j].rank == 14) players[i].ranks['AC'] ++;
+    }
+  }
+  pairCheck();
+  flushCheck();
+  straightCheck();
+  sfCheck();
+  bestIndex();
+}
+
+function breakTie(bestindex){
+  if (besthands.length == 1) players = besthands;
+  else{
+    switch (bestindex){
+      case 0:
+        breakTieSF();
+        break;
+      case 1:
+        breakTieFK();
+        break;
+      case 2:
+        breakTieFH();
+        break;
+      case 3:
+        breakTieFL();
+        break;
+      case 4:
+        breakTieST();
+        break;
+      case 5:
+        breakTieTK();
+        break;
+      case 6:
+        breakTieTP();
+        break;
+      case 7:
+        breakTiePA();
+        break;
+      case 8:
+        breakTieHC();
+        break;
+    }
+  }
+  scoopOnFold();
+  startHand();
+}
+
+function bestIndex(){
+  var bestindex = 8;
+  for (i=0; i<players.length; i++){
+    var curindex = 0;
+    for (var hand in players[i].hands){
+      if (players[i].hands[hand] == true){
+        if (curindex <= bestindex){
+          if (curindex < bestindex){
+            besthands = [];
+          }
+          besthands.push(players[i]);
+          bestindex = curindex;
+        }
+        break;
+      }
+      curindex ++;
+    }
+  }
+  breakTie(bestindex);
+}
+
+function pairCheck(){
+  for (i=0; i<players.length; i++){
+    for (var rank in players[i].ranks){
+      if (players[i].ranks[rank] == 4) players[i].hands['FK'] = true;
+      if (players[i].ranks[rank] == 3){
+        players[i].hands['TK'] = true;
+        players[i].tkcounter ++;
+      }
+      if(players[i].ranks[rank] == 2){
+        players[i].hands['PA'] = true;
+        players[i].pacounter ++;
+      }
+    }
+    if (players[i].pacounter >= 2) players[i].hands['TP'] = true;
+    if ( (players[i].tkcounter >= 1 && players[i].pacounter >= 1) || players[i].tkcounter == 2) players[i].hands['FH'] = true;
+  }
+}
+
+function flushCheck(){
+  for (i=0; i<players.length; i++){
+    for (var suit in players[i].suits){
+      if (players[i].suits[suit] >= 5){
+        players[i].hands['FL'] = true;
+        players[i].flush = suit;
+      }
+    }
+  }
+}
+
+function straightCheck(){
+  for (i=0; i<players.length; i++){
+    if (players[i].ranks['AC'] >= 1 && players[i].ranks['KI'] >= 1 && players[i].ranks['QU'] >= 1 && players[i].ranks['JA'] >= 1 && players[i].ranks['TE'] >= 1){
+      players[i].hands['ST'] = true;
+      players[i].straight.push(14);
+    }
+    if (players[i].ranks['KI'] >= 1 && players[i].ranks['QU'] >= 1 && players[i].ranks['JA'] >= 1 && players[i].ranks['TE'] >= 1 && players[i].ranks['NI'] >= 1){
+      players[i].hands['ST'] = true;
+      players[i].straight.push(13);
+    }
+    if (players[i].ranks['QU'] >= 1 && players[i].ranks['JA'] >= 1 && players[i].ranks['TE'] >= 1 && players[i].ranks['NI'] >= 1 && players[i].ranks['EI'] >= 1){
+      players[i].hands['ST'] = true;
+      players[i].straight.push(12);
+    }
+    if (players[i].ranks['JA'] >= 1 && players[i].ranks['TE'] >= 1 && players[i].ranks['NI'] >= 1 && players[i].ranks['EI'] >= 1 && players[i].ranks['SE'] >= 1){
+      players[i].hands['ST'] = true;
+      players[i].straight.push(11);
+    }
+    if (players[i].ranks['TE'] >= 1 && players[i].ranks['NI'] >= 1 && players[i].ranks['EI'] >= 1 && players[i].ranks['SE'] >= 1 && players[i].ranks['SI'] >= 1){
+      players[i].hands['ST'] = true;
+      players[i].straight.push(10);
+    }
+    if (players[i].ranks['NI'] >= 1 && players[i].ranks['EI'] >= 1 && players[i].ranks['SE'] >= 1 && players[i].ranks['SI'] >= 1 && players[i].ranks['FI'] >= 1){
+      players[i].hands['ST'] = true;
+      players[i].straight.push(9);
+    }
+    if (players[i].ranks['EI'] >= 1 && players[i].ranks['SE'] >= 1 && players[i].ranks['SI'] >= 1 && players[i].ranks['FI'] >= 1 && players[i].ranks['FO'] >= 1){
+      players[i].hands['ST'] = true;
+      players[i].straight.push(8);
+    }
+    if (players[i].ranks['SE'] >= 1 && players[i].ranks['SI'] >= 1 && players[i].ranks['FI'] >= 1 && players[i].ranks['FO'] >= 1 && players[i].ranks['TH'] >= 1){
+      players[i].hands['ST'] = true;
+      players[i].straight.push(7);
+    }
+    if (players[i].ranks['SI'] >= 1 && players[i].ranks['FI'] >= 1 && players[i].ranks['FO'] >= 1 && players[i].ranks['TH'] >= 1 && players[i].ranks['TW'] >= 1){
+      players[i].hands['ST'] = true;
+      players[i].straight.push(6);
+    }
+    if (players[i].ranks['FI'] >= 1 && players[i].ranks['FO'] >= 1 && players[i].ranks['TH'] >= 1 && players[i].ranks['TW'] >= 1 && players[i].ranks['AC'] >= 1){
+      players[i].hands['ST'] = true;
+      players[i].straight.push(5);
+    }
+  }
+}
+
+function sfCheck(){
+  for (i=0; i<players.length; i++){
+    if (players[i].hands['FL'] == true && players[i].hands['ST'] == true){
+      for(j=0; j<players[i].straight.length; j++){
+        var num = players[i].straight[j];
+        var suitcount = 0
+          for(k=0; k<5; k++){
+            if (num == 1) num = 14;
+            for (l=0; l<players[i].hand.length; l++){
+              if (players[i].hand[l].suit == players[i].flush && players[i].hand[l].rank == num) suitcount += 1;
+            }
+            num = num-1; 
+          }
+        if (suitcount >= 5) players[i].hands['SF'] = true;
+      }
+    } 
+  }
+}
+
+
+
+
+
 
 // ROUTE 
 app.get('/', function(req, res) {
