@@ -21,7 +21,6 @@ var Player = function(id, name){
 	this.chipsout = 0;
 	this.card1 = {};
 	this.card2 = {};
-	this.ingame = true;
 	this.inhand = true;
 	this.button = false;
 	this.bigblind = false;
@@ -154,14 +153,12 @@ var id = 0;
 
 io.on('connection', function(socket) {
   var addedUser = false;
-  socket.on('init', function(userId) {
+  socket.on('init', function(message) {
     console.log('init');
-    var newId = userId ? userId : ++id;
-    console.log(newId);
-    return;
-    socket.userId = newId;
+    ++id;
+    socket.userId = id;
     waitingList.push({
-      newId,
+      id,
       name: '',
       confirm: false
     })
@@ -180,7 +177,7 @@ io.on('connection', function(socket) {
                   && !gameStarted;
     if (isValid) {
       gameStarted = true;
-      waitingList.forEach((player) => {
+      validPlayers.forEach((player) => {
         var newPlayer = new Player(player.id, player.name);
         players.push(newPlayer);
         allplayers.push(newPlayer);
@@ -191,6 +188,7 @@ io.on('connection', function(socket) {
 
 	socket.on('fold', function(message) {
     console.log('fold');
+    io.emit('check your turn', players[0].id);
 		io.emit('fold', players, cb, bb);
 		players[0].inhand = false;
 		if (cb == players[1].chipsout && (bb != players[1].chipsout || round != 'p')) nextCards();
@@ -203,22 +201,27 @@ io.on('connection', function(socket) {
 	});
 
 	socket.on('call', function(message) {
-		var toCall = cb-players[0].chipsout;
-		players[0].chips -= toCall;
-		players[0].chipsout += toCall;
-		pot += toCall;
-		if (cb == players[1].chipsout && (bb != players[1].chipsout || round != 'p')){
-			io.emit('addChips', players, allplayers, pot, cb, bb, raisecount, action, round);
-			nextCards();
-		}
-		else{
-			action = 'call';
-			io.emit('addChips', players, allplayers, pot, cb, bb, raisecount, action, round);
-			players.push(players.shift());
-		}
+    console.log('call');
+    console.log(players);
+    io.emit('check your turn', players[0].id);
+
+    var toCall = cb-players[0].chipsout;
+    players[0].chips -= toCall;
+    players[0].chipsout += toCall;
+    pot += toCall;
+    if (cb == players[1].chipsout && (bb != players[1].chipsout || round != 'p')){
+      io.emit('addChips', players, allplayers, pot, cb, bb, raisecount, action, round);
+      nextCards();
+    }
+    else{
+      action = 'call';
+      io.emit('addChips', players, allplayers, pot, cb, bb, raisecount, action, round);
+      players.push(players.shift());
+    }
 	});
 
 	socket.on('raise', function(message) {
+    io.emit('check your turn', players[0].id);
 		raisecount ++;
 		if(round == 'p' || round == 'f'){
 			var toRaise = cb-players[0].chipsout + bb;
@@ -237,6 +240,9 @@ io.on('connection', function(socket) {
 	});
 
 	socket.on('bet', function(message) {
+    console.log('bet');
+    console.log(players[0]);
+    io.emit('check your turn', players[0].id);
 		if (round == 'f') var toBet = bb;
 		else var toBet = bb * 2;
 		cb = toBet;
@@ -249,6 +255,9 @@ io.on('connection', function(socket) {
 	});
 
 	socket.on('check', function(message) {
+    console.log('check');
+    console.log('call');
+    io.emit('check your turn', players[0].id);
 		if (round == 'p'){
 			nextCards();
 		}
@@ -271,34 +280,23 @@ io.on('connection', function(socket) {
 	
   socket.on('edit name', function(name) {
     waitingList.filter(e => e.id === socket.userId)[0].name = name;
-    console.log(waitingList);
-    socket.emit('test', waitingList.filter(e => e.id === socket.userId));
   })
 
-  socket.on('add user', function(userId) {
-    if(addedUser) return;
-    addedUser = true;
-    waitingList
-    var newPlayer = new Player (players.length + 1, userName);
-    allplayers.push(newPlayer);
-    console.log(allplayers);
-    players.push(newPlayer);
-    confirmList.push({
-      id: newPlayer.id,
-      name: newPlayer.name,
-      confirm: false
-    })
-    socket.emit('login', newPlayer);
-    io.sockets.emit('new user', confirmList);
+  socket.on('test', function() {
+    console.log('test')
+    console.log(players);
   })
 
   socket.on('start game', function() {
     startHand();
   })
   socket.on('disconnect', function() {
+    waitingList = waitingList.filter(player => player.id !== socket.userId);
     if(addedUser) {
       console.log('Aww..');
     }
+    console.log('waiting list')
+    console.log(waitingList);
   });
 });
 
@@ -327,9 +325,17 @@ function playerReset(){
 }
 
 function passButton(){
+  if(allplayers.filter(player => player.button).length === 0) {
+    allplayers[0].button = true;
+  } else {
+    var lastDealerPlayer = allplayers.filter(player => player.button)[0];
+
+    allplayers.forEach(player => player.button)
+  }
   for(i=0; i<allplayers.length; i++){
     var j = 0;
     var buttonIndex = 0;
+    if()
     if (allplayers[i].button == true){
       allplayers[i].button = false;
       buttonIndex = i;
@@ -340,12 +346,17 @@ function passButton(){
   for(i=buttonIndex; j<allplayers.length; j++){
     if(i != allplayers.length-1) i++;
     else i = 0;
-    if (allplayers[i].ingame == true){
-      allplayers[i].button = true;
-      break;
-    }
+    allplayers[i].button = true;
+    break;
     if(i == allplayers.length-1) i=-1;
   }
+  console.log('======');
+  console.log('i am i: ' + i);
+  console.log('======');
+  allplayers.forEach(player => {
+    console.log('check button');
+    console.log(player.button)
+  })
   playersInHand(i);
 };
 
@@ -355,12 +366,12 @@ function playersInHand(buttonIndex){
   for(i=0; i<allplayers.length; i++){
     allplayers[i].bigblind = false;
     allplayers[i].firsttoact = false;
-    if(allplayers[j].ingame == true){
-      players.push(allplayers[j]);
-    }
+    players.push(allplayers[j]);
     if(j != allplayers.length-1) j++;
     else j = 0;
   }
+  console.log('playersInHand')
+  console.log(players);
 };
 
 function firstAfterButton(){
@@ -426,7 +437,6 @@ function fold(){
 };
 
 function startHand(){
-  console.log(players)
   gameStarted = true;
   playerReset();
   board =[];
