@@ -14,31 +14,14 @@
 
 		var socket = io();
     var userId = '';
+    
     socket.on('init', function(userId) {
-      if (!localStorage.getItem('userId')) {
-        localStorage.setItem('userId', userId);
+      console.log('userId: ' + userId);
+      if(!this.userId) {
+        this.userId = userId;
       }
-      console.log(localStorage.getItem('userId'));
     });
-    socket.on('new user', function(confirmList) {
-      $('.confirm-board tbody').empty();
-      confirmList.forEach((player) => {
-        var className = '';
-        var display = 'none';
-        if ( player.id === socket.player.id ) {
-          className = 'me';
-        }
-        if ( player.confirm ) {
-          display = '';
-        }
-        $('.confirm-board tbody').append(`<tr class='player${player.id} ${className}'><td >${player.name}</td><td id="confirm" style="display: ${display};">confirm</td></tr>`);
-      });
-    })
-    
-    socket.on('login', function(player) {
-      socket.player = player;
-    })
-    
+
     socket.on('confirm', function(player) {
         $(`.confirm-board .player${player.id} #confirm`).css('display','inline-block');
     })
@@ -47,34 +30,54 @@
     })
     
     socket.on('game start', function( players, allplayers, pot, board) {
-      $('#action').css('display', 'block');
-      showNames(players, allplayers);
-      showChips(players, allplayers);
-      showCards(players, allplayers);
-      showButton(players, allplayers);
-      showChipsOut(players, allplayers, pot);
+      allplayers.forEach(player => {
+          console.log('=============')
+          console.log( 'id ' + player.id);
+          console.log('inhand: ' + player.inhand);
+          console.log('button: ' + player.button);
+          console.log('bigblind: ' + player.bigblind);
+          console.log('firsttoact: ' + player.firsttoact);
+          console.log('=============')
+      })
+      showNames(this.userId, allplayers);
+      showChips(this.userId, allplayers);
+      showCards(this.userId, allplayers);
+      showButton(this.userId, allplayers);
+      showChipsOut(this.userId, allplayers, pot);
       showCall();
-      showRaise();
+      console.log('first player');
+      
+      showAction(this.userId, players[0].id);
+      socket.emit('test')
       if (board.length > 0) showBoard(board);
       else hideBoard();
+    })
+
+    socket.on('check your turn', function(serverSentId) {
+      console.log('check your turn');
+      console.log(this.userId)
+      console.log(serverSentId)
+      showAction(this.userId, serverSentId);
     })
     //game logic
 		socket.on('addChips', function(players, allplayers, pot, cb, bb, raisecount, action, round) {
 			showChips(players, allplayers);
-			showChipsOut(players, allplayers, pot);
+			showChipsOut(this.userId, allplayers, pot);
 			if (players[1].bigblind == true && cb==bb && round == 'p') showCheck();
 			if (action == 'raise' || action == 'bet') showRaise();
 			if (raisecount == 3) hideRaise();	
 		});
 
 		socket.on('fold', function(players, cb, bb) {
-		    $('#player' + players[0].id + ' .cards div').css('visibility', 'hidden');
+		  $('#player' + players[0].id + ' .cards div').css('visibility', 'hidden');
 		    if (players[1].bigblind == true && cb==bb) showCheck();
 		});
 
 		socket.on('scoop', function(players, pot) {
 			alert(players[0].name + " won the pot of " + pot + " chips!")
-		    scoop(players);
+		  scoop(players);
+      console.log('restart game');
+      socket.emit('start game');
 		});
 
 		socket.on('tiescoop', function(players, pot) {
@@ -83,50 +86,64 @@
 				str += players[i].name + " ";
 			}
 			alert(str);
-		    tieScoop(players);
+		  tieScoop(players);
 		});
 
 		socket.on('flop', function(board, players, allplayers, pot) {
+        console.log('flop');
 		    showBoard(board);
-		    showChipsOut(players, allplayers, pot);
+		    showChipsOut(this.userId, allplayers, pot);
 		    showBet();
 		});
 
-        function showNames(players, allplayers){
-            for(var i=0; i<allplayers.length; i++){
-              if(allplayers[i].ingame == true){
-                $('#player' + allplayers[i].id + ' .name').show();
-              $('#player' + allplayers[i].id + ' .name').html(allplayers[i].name);
-          }
+    function showNames(userId, allplayers){
+      for(var i=0; i<allplayers.length; i++){
+        $('#player' + allplayers[i].id + ' .name').show();
+        $('#player' + allplayers[i].id + ' .name').html(allplayers[i].name);
+        console.log('showName')
+        console.log(userId)
+        console.log(allplayers[i].id)
+        if( userId === allplayers[i].id ) {
+          $('#player' + allplayers[i].id + ' .name').addClass('me');
         }
+      }
     }
-    function showCards(players, allplayers){
-      console.log(this.userId);
-            for(var i=0; i<allplayers.length; i++){
-              if(allplayers[i].inhand == true){
-                $('#player' + allplayers[i].id + ' .cards div').css("visibility", "visible");
-              $('#player' + allplayers[i].id + ' .card1').css('background-image', 'url(assets/images/' + allplayers[i].card1.image + '.png)');
-              $('#player' + allplayers[i].id + ' .card2').css('background-image', 'url(assets/images/' + allplayers[i].card2.image + '.png)');
+
+    function showCards(userId, allplayers){
+      for(var i=0; i<allplayers.length; i++){
+        var cardImg = ['back', 'back'];
+        if(allplayers[i].inhand == true){
+          if(userId === allplayers[i].id) {
+            cardImg[0] = allplayers[i].card1.image
+            cardImg[1] = allplayers[i].card2.image
           }
+          $('#player' + allplayers[i].id + ' .cards div').css("visibility", "visible");
+          $('#player' + allplayers[i].id + ' .card1').css('background-image', 'url(assets/images/'+ cardImg[0] +'.png)');
+          $('#player' + allplayers[i].id + ' .card2').css('background-image', 'url(assets/images/'+ cardImg[1] +'.png)');
         }
+      }
     }
-    function showChips(players, allplayers){
-            for(var i=0; i<allplayers.length; i++){
-              if(allplayers[i].ingame == true){
-                    $('#player' + allplayers[i].id + ' .chips').show();
-              $('#player' + allplayers[i].id + ' .chips').html(allplayers[i].chips);
-          }
+
+    function showChips(userId, allplayers){
+      console.log('showChips');
+      console.log(allplayers);
+      for(var i=0; i<allplayers.length; i++){
+        $('#player' + allplayers[i].id + ' .chips').show();
+        $('#player' + allplayers[i].id + ' .chips').html(allplayers[i].chips);
+        if( userId === allplayers[i].id ) {
+          $('#player' + allplayers[i].id + ' .chips').addClass('me');
         }
+      }
     }
-    function showButton(players, allplayers){
+    function showButton(userId, allplayers){
       $('.button').css('background-image', 'none');
-            for(var i=0; i<players.length; i++){
-              if(players[i].button == true){
-            $('#player' + players[i].id + ' .button').css('background-image', 'url(assets/images/button.png)');
+      for(var i=0; i<allplayers.length; i++){
+        if(allplayers[i].button == true){
+          $('#player' + allplayers[i].id + ' .button').css('background-image', 'url(assets/images/button.png)');
         }
-        }
+      }
     }
-    function showChipsOut(players, allplayers, pot){
+    function showChipsOut(userId, allplayers, pot){
       $('#pot span').html(pot);
       $('.chipsout').hide();
             for(var i=0; i<allplayers.length; i++){
@@ -137,7 +154,7 @@
         }
     }
     function scoop(players){
-        $('#player' + players[0].id + ' .chips').html(players[0].chips);
+      $('#player' + players[0].id + ' .chips').html(players[0].chips);
       $('.chipsout').hide();
       $('#pot span').html(0);
     }
@@ -149,22 +166,22 @@
       $('#pot span').html(0);
     }
     function showCheck(){
-            $('#call').hide();
-            $('#check').show();
+      $('#call').hide();
+      $('#check').show();
     }
     function showCall(){
-            $('#check').hide();
-            $('#call').show();
+      $('#check').hide();
+      $('#call').show();
     }
     function showBet(){
-            $('#raise').hide();
-            $('#bet').show();
-            showCheck();
+      $('#raise').hide();
+      $('#bet').show();
+      showCheck();
     }
     function showRaise(){
-            $('#raise').show();
-            $('#bet').hide();
-            showCall();
+      $('#raise').show();
+      $('#bet').hide();
+      showCall();
     }
     function hideRaise(){
       $('#raise').hide();
@@ -177,6 +194,19 @@
 
     function hideBoard(){
       $('#board div').css('background-image', 'none');
+    }
+
+    function showAction(userId, serverSentId) {
+      console.log('showAction')
+      console.log(userId)
+      console.log(serverSentId)
+      if(userId === serverSentId) {
+        $('#action').show();
+      }
+    }
+    //instance function 
+    function isMe(userId, allPlayers) {
+      console.log('isMe');
     }
 
 	</script>
@@ -223,6 +253,7 @@
 
 	<div class="player" id="player1">
 		<div class="display">
+      <p class="myturn">Me</p>
 			<p class="name"></p>
 			<p class="chips"></p>
 		</div>
@@ -236,6 +267,7 @@
 
 	<div class="player" id="player2">
 		<div class="display">
+      <p class="myturn">Me</p>
 			<p class="name"></p>
 			<p class="chips"></p>
 		</div>
@@ -249,6 +281,7 @@
 	
 	<div class="player" id="player3">
 		<div class="display">
+      <p class="myturn">Me</p>
 			<p class="name"></p>
 			<p class="chips"></p>
 		</div>
@@ -266,6 +299,7 @@
 			<div class="card2"></div>
 		</div>
 		<div class="display">
+      <p class="myturn">Me</p>
 			<p class="name"></p>
 			<p class="chips"></p>
 		</div>
@@ -279,6 +313,7 @@
 			<div class="card2"></div>
 		</div>
 		<div class="display">
+      <p class="myturn">Me</p>
 			<p class="name"></p>
 			<p class="chips"></p>
 		</div>
@@ -292,6 +327,7 @@
 			<div class="card2"></div>
 		</div>
 		<div class="display">
+      <p class="myturn">Me</p>
 			<p class="name"></p>
 			<p class="chips"></p>
 		</div>
@@ -301,6 +337,7 @@
 	
 	<div class="player" id="player7">
 		<div class="display">
+      <p class="myturn">Me</p>
 			<p class="name"></p>
 			<p class="chips"></p>
 		</div>
@@ -314,6 +351,7 @@
 	
 	<div class="player" id="player8">
 		<div class="display">
+      <p class="myturn">Me</p>          
 			<p class="name"></p>
 			<p class="chips"></p>
 		</div>
@@ -354,27 +392,34 @@
 
 	function fold() {
 		socket.emit('fold');
+    $('#action').hide();
 	}
 
 	function call() {
 		socket.emit('call');
+    $('#action').hide();
 	}
 	function raise() {
-		socket.emit('raise');
+		socket.emit('raise')
+    $('#action').hide();;
 	}
 	function bet() {
 		socket.emit('bet');
+    $('#action').hide();
 	}
 	function init(){
 		socket.emit('init', localStorage.getItem('userId'));
 	}
 	function check(){
 		socket.emit('check');
+    $('#action').hide();
 	}
 	function flop(){
 		socket.emit('flop');
 	}
-
+  $('.action button').on('click', function() {
+    socket.emit('test');
+  })
 	init();
 	
 </script>

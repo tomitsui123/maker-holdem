@@ -188,22 +188,22 @@ io.on('connection', function(socket) {
 
 	socket.on('fold', function(message) {
     console.log('fold');
-    io.emit('check your turn', players[0].id);
-		io.emit('fold', players, cb, bb);
-		players[0].inhand = false;
-		if (cb == players[1].chipsout && (bb != players[1].chipsout || round != 'p')) nextCards();
-		else players.shift(); 
+    io.emit('fold', players, cb, bb);
+    players[0].inhand = false;
+    if (cb == players[1].chipsout && (bb != players[1].chipsout || round != 'p')) nextCards();
+    else players.shift(); 
 
-		if (players.length == 1){
-		  scoopOnFold();
-		  startHand();
-		} 
+    if (players.length == 1){
+      scoopOnFold();
+      startHand();
+    }
+    players.push(players.shift());
+    io.emit('check your turn', players[0].id);
 	});
 
 	socket.on('call', function(message) {
     console.log('call');
     console.log(players);
-    io.emit('check your turn', players[0].id);
 
     var toCall = cb-players[0].chipsout;
     players[0].chips -= toCall;
@@ -218,40 +218,41 @@ io.on('connection', function(socket) {
       io.emit('addChips', players, allplayers, pot, cb, bb, raisecount, action, round);
       players.push(players.shift());
     }
+    io.emit('check your turn', players[0].id);
 	});
 
 	socket.on('raise', function(message) {
+    raisecount ++;
+    if(round == 'p' || round == 'f'){
+      var toRaise = cb-players[0].chipsout + bb;
+      cb += bb;
+    }
+    else{
+      var toRaise = cb-players[0].chipsout + (bb * 2);
+      cb += bb * 2;
+    }
+    players[0].chips -= toRaise;
+    players[0].chipsout += toRaise;
+    pot += toRaise;
+    action = 'raise';
+    io.emit('addChips', players, allplayers, pot, cb, bb, raisecount, action, round);
+    players.push(players.shift());
     io.emit('check your turn', players[0].id);
-		raisecount ++;
-		if(round == 'p' || round == 'f'){
-			var toRaise = cb-players[0].chipsout + bb;
-			cb += bb;
-		}
-		else{
-			var toRaise = cb-players[0].chipsout + (bb * 2);
-			cb += bb * 2;
-		}
-		players[0].chips -= toRaise;
-		players[0].chipsout += toRaise;
-		pot += toRaise;
-		action = 'raise';
-		io.emit('addChips', players, allplayers, pot, cb, bb, raisecount, action, round);
-		players.push(players.shift());
 	});
 
 	socket.on('bet', function(message) {
     console.log('bet');
     console.log(players[0]);
+    if (round == 'f') var toBet = bb;
+    else var toBet = bb * 2;
+    cb = toBet;
+    players[0].chips -= toBet;
+    players[0].chipsout += toBet;
+    pot += toBet;
+    action = 'bet';
+    io.emit('addChips', players, allplayers, pot, cb, bb, raisecount, action, round);
+    players.push(players.shift());
     io.emit('check your turn', players[0].id);
-		if (round == 'f') var toBet = bb;
-		else var toBet = bb * 2;
-		cb = toBet;
-		players[0].chips -= toBet;
-		players[0].chipsout += toBet;
-		pot += toBet;
-		action = 'bet';
-		io.emit('addChips', players, allplayers, pot, cb, bb, raisecount, action, round);
-		players.push(players.shift());
 	});
 
 	socket.on('check', function(message) {
@@ -284,7 +285,7 @@ io.on('connection', function(socket) {
 
   socket.on('test', function() {
     console.log('test')
-    console.log(players);
+    // console.log(players);
   })
 
   socket.on('start game', function() {
@@ -325,17 +326,26 @@ function playerReset(){
 }
 
 function passButton(){
-  if(allplayers.filter(player => player.button).length === 0) {
+  console.log('passButton');
+  var dealerPlayerList = allplayers.filter(player => player.button);
+  if(dealerPlayerList.length === 0) {
     allplayers[0].button = true;
   } else {
-    var lastDealerPlayer = allplayers.filter(player => player.button)[0];
+    var dealerPlayerId = dealerPlayerList[0].id;
+    console.log('fuck');
+    console.log(dealerPlayerId);
+    var nextDealerId = dealerPlayerId % allplayers.length + 1;
+    allplayers.forEach(player => {
+      player.button = false;
+    })
 
-    allplayers.forEach(player => player.button)
+    console.log(nextDealerId);
+    console.log(allplayers);
+    allplayers.filter(player => player.id === nextDealerId)[0].button = true;
   }
-  for(i=0; i<allplayers.length; i++){
+  /*for(i=0; i<allplayers.length; i++){
     var j = 0;
     var buttonIndex = 0;
-    if()
     if (allplayers[i].button == true){
       allplayers[i].button = false;
       buttonIndex = i;
@@ -349,29 +359,26 @@ function passButton(){
     allplayers[i].button = true;
     break;
     if(i == allplayers.length-1) i=-1;
-  }
-  console.log('======');
-  console.log('i am i: ' + i);
-  console.log('======');
-  allplayers.forEach(player => {
-    console.log('check button');
-    console.log(player.button)
-  })
-  playersInHand(i);
+  }*/
+
+  console.log(allplayers.filter(player => player.button));
+  playersInHand(allplayers.filter(player => player.button)[0].id);
 };
 
 function playersInHand(buttonIndex){
   players = [];
   var j = buttonIndex;
+  console.log(j);
   for(i=0; i<allplayers.length; i++){
-    allplayers[i].bigblind = false;
-    allplayers[i].firsttoact = false;
-    players.push(allplayers[j]);
-    if(j != allplayers.length-1) j++;
-    else j = 0;
+    var nextPlayer = allplayers.filter(player => player.id === j)[0];
+    nextPlayer.bigblind = false;
+    nextPlayer.firsttoact = false;
+    console.log('allplayers[j]')
+    console.log(allplayers.filter(player => player.id === j));
+    players.push(nextPlayer);
+
+    j = j % allplayers.length + 1;
   }
-  console.log('playersInHand')
-  console.log(players);
 };
 
 function firstAfterButton(){
@@ -397,6 +404,26 @@ function firstAfterButton(){
   players[0].firsttoact = true;
 };
 
+function startHand(){
+  gameStarted = true;
+  playerReset();
+  board =[];
+  round = "p";
+  raisecount = 0;
+  sb = 10;
+  bb = 20;
+  cb = bb;
+  pot = sb+bb;
+  besthands = [];
+  tie = false;
+  passButton();
+  blinds();
+  shuffleDeck();
+  dealCards();
+  console.log()
+  io.emit('game start', players, allplayers, pot, board);
+}
+
 function shuffle(o){ //v1.0
   for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
   return o;
@@ -420,6 +447,7 @@ function dealCards(){
 };
 
 function blinds(){
+  console.log('blinds')
   players.push(players.shift()); 
   players[0].chips -= sb;
   players[0].chipsout += sb;
@@ -428,6 +456,8 @@ function blinds(){
   players[0].chips -= bb;
   players[0].chipsout += bb;
   players.push(players.shift()); 
+  console.log('after push')
+  console.log(players)
 };
 
 function fold(){
@@ -435,25 +465,6 @@ function fold(){
   //players.delete(0); 
   //io.emit('next', players);
 };
-
-function startHand(){
-  gameStarted = true;
-  playerReset();
-  board =[];
-  round = "p";
-  raisecount = 0;
-  sb = 10;
-  bb = 20;
-  cb = bb;
-  pot = sb+bb;
-  besthands = [];
-  tie = false;
-  passButton();
-  blinds();
-  shuffleDeck();
-  dealCards();
-  io.emit('game start', players, allplayers, pot, board);
-}
 
 function scoopOnFold(){
   if (tie != true) players[0].chips += pot;
