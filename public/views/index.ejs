@@ -14,19 +14,12 @@
 
 		var socket = io();
     var userId = '';
-
-    socket.on('init', function(players, allplayers, pot, board) {
-      showNames(players, allplayers);
-      showChips(players, allplayers);
-      showCards(players, allplayers);
-      showButton(players, allplayers);
-      showChipsOut(players, allplayers, pot);
-      showCall();
-      showRaise();
-      if (board.length > 0) showBoard(board);
-      else hideBoard();
+    socket.on('init', function(userId) {
+      if (!localStorage.getItem('userId')) {
+        localStorage.setItem('userId', userId);
+      }
+      console.log(localStorage.getItem('userId'));
     });
-
     socket.on('new user', function(confirmList) {
       $('.confirm-board tbody').empty();
       confirmList.forEach((player) => {
@@ -49,9 +42,22 @@
     socket.on('confirm', function(player) {
         $(`.confirm-board .player${player.id} #confirm`).css('display','inline-block');
     })
-
-
-
+    socket.on('test', function(arr) {
+      console.log(arr);
+    })
+    
+    socket.on('game start', function( players, allplayers, pot, board) {
+      $('#action').css('display', 'block');
+      showNames(players, allplayers);
+      showChips(players, allplayers);
+      showCards(players, allplayers);
+      showButton(players, allplayers);
+      showChipsOut(players, allplayers, pot);
+      showCall();
+      showRaise();
+      if (board.length > 0) showBoard(board);
+      else hideBoard();
+    })
     //game logic
 		socket.on('addChips', function(players, allplayers, pot, cb, bb, raisecount, action, round) {
 			showChips(players, allplayers);
@@ -95,6 +101,7 @@
         }
     }
     function showCards(players, allplayers){
+      console.log(this.userId);
             for(var i=0; i<allplayers.length; i++){
               if(allplayers[i].inhand == true){
                 $('#player' + allplayers[i].id + ' .cards div').css("visibility", "visible");
@@ -202,7 +209,7 @@
     <button id="enter">enter</button>
     <button id="ready">ready</button>
   </div>
-	<div id="action">
+	<div id="action" style="display: none">
 		<button id="fold">Fold</button>
 		<button id="call">Call</button>
 		<button id="check">Check</button>
@@ -332,17 +339,17 @@
 	
   function enter() {
     var playerName = $('#player-name').val();
-    socket.emit('add user', playerName);
+    
     $('#player-name').css('display', 'none');
     $('#enter').css('display', 'none');
     $('#ready').css('display', 'inline-block');
+
+    socket.emit('edit name', playerName);
   }
 
   function ready() {
-
-    socket.emit('ready', socket.player);
+    socket.emit('ready');
     $('#ready').css('display', 'none');
-    $('#action').css('display', 'block');
   }
 
 	function fold() {
@@ -359,7 +366,7 @@
 		socket.emit('bet');
 	}
 	function init(){
-		socket.emit('init');
+		socket.emit('init', localStorage.getItem('userId'));
 	}
 	function check(){
 		socket.emit('check');
@@ -368,7 +375,7 @@
 		socket.emit('flop');
 	}
 
-	// init();
+	init();
 	
 </script>
 

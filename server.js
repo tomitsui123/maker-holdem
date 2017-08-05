@@ -147,20 +147,44 @@ var pot = sb+bb;
 var action;
 var besthands = [];
 var tie = false;
-var confirmList = [];
+var playerList = [];
+var waitingList = [];
 var gameStarted = false;
-
+var id = 0;
 
 io.on('connection', function(socket) {
   var addedUser = false;
-  socket.on('init', function(message) {
-    io.emit('init', players, allplayers, pot, board);
+  socket.on('init', function(userId) {
+    console.log('init');
+    var newId = userId ? userId : ++id;
+    console.log(newId);
+    return;
+    socket.userId = newId;
+    waitingList.push({
+      newId,
+      name: '',
+      confirm: false
+    })
+    io.emit('init', socket.userId);
   });
 
-	socket.on('ready', function(player) {
-    confirmList.filter((e) => e.id === player.id)[0].confirm = true;
-    io.sockets.emit('confirm', player);
-    if (confirmList.filter((e) => !e.confirm).length === 0 && players.length > 1) {
+	socket.on('ready', function() {
+    waitingList.filter(e => e.id === socket.userId)[0].confirm = true;
+    console.log(waitingList);
+    console.log('========');
+    console.log('Hi valid player');
+    var validPlayers = waitingList.filter((e) => e.name !== '');
+    console.log(validPlayers);
+    var isValid = validPlayers.filter((e) => !e.confirm).length === 0 
+                  && validPlayers.length > 1
+                  && !gameStarted;
+    if (isValid) {
+      gameStarted = true;
+      waitingList.forEach((player) => {
+        var newPlayer = new Player(player.id, player.name);
+        players.push(newPlayer);
+        allplayers.push(newPlayer);
+      })
       startHand();
     }
   })
@@ -245,9 +269,16 @@ io.on('connection', function(socket) {
 		postFlop();
 	});
 	
-  socket.on('add user', function(userName) {
+  socket.on('edit name', function(name) {
+    waitingList.filter(e => e.id === socket.userId)[0].name = name;
+    console.log(waitingList);
+    socket.emit('test', waitingList.filter(e => e.id === socket.userId));
+  })
+
+  socket.on('add user', function(userId) {
     if(addedUser) return;
     addedUser = true;
+    waitingList
     var newPlayer = new Player (players.length + 1, userName);
     allplayers.push(newPlayer);
     console.log(allplayers);
@@ -395,6 +426,7 @@ function fold(){
 };
 
 function startHand(){
+  console.log(players)
   gameStarted = true;
   playerReset();
   board =[];
@@ -410,7 +442,7 @@ function startHand(){
   blinds();
   shuffleDeck();
   dealCards();
-  io.emit('init', players, allplayers, pot, board);
+  io.emit('game start', players, allplayers, pot, board);
 }
 
 function scoopOnFold(){
