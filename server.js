@@ -328,6 +328,8 @@ function playerReset(){
 function passButton(){
   console.log('passButton');
   var dealerPlayerList = allplayers.filter(player => player.button);
+  console.log('dealerPlayerList');
+  console.log(dealerPlayerList)
   if(dealerPlayerList.length === 0) {
     allplayers[0].button = true;
   } else {
@@ -371,6 +373,13 @@ function playersInHand(buttonIndex){
   console.log(j);
   for(i=0; i<allplayers.length; i++){
     var nextPlayer = allplayers.filter(player => player.id === j)[0];
+    if(typeof(nextPlayer) === 'undefined') {
+    	continue;
+    }
+    console.log('______------_____');
+    console.log(j);
+    console.log(allplayers);
+    console.log(nextPlayer);
     nextPlayer.bigblind = false;
     nextPlayer.firsttoact = false;
     console.log('allplayers[j]')
@@ -379,6 +388,8 @@ function playersInHand(buttonIndex){
 
     j = j % allplayers.length + 1;
   }
+  console.log('playersInHand');
+  console.log(players);
 };
 
 function firstAfterButton(){
@@ -417,6 +428,8 @@ function startHand(){
   besthands = [];
   tie = false;
   passButton();
+  console.log('_________-----_______----');
+  console.log(players)
   blinds();
   shuffleDeck();
   dealCards();
@@ -447,8 +460,10 @@ function dealCards(){
 };
 
 function blinds(){
+  console.log(players);
   console.log('blinds')
-  players.push(players.shift()); 
+  players.push(players.shift());
+  console.log(players);
   players[0].chips -= sb;
   players[0].chipsout += sb;
   players.push(players.shift()); 
